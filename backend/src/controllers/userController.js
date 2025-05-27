@@ -1,5 +1,7 @@
-import { User } from '../models/index.js';
+import db from '../models/index.js';
 import { logger } from '../utils/logger.js';
+
+const { User } = db;
 
 // Get user profile
 export const getProfile = async (req, res) => {

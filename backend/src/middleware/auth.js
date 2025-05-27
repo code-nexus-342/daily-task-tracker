@@ -1,6 +1,8 @@
 import { auth } from '../config/firebase-admin.js';
 import { logger } from '../utils/logger.js';
-import { User } from '../models/index.js';
+import db from '../models/index.js';
+
+const { User } = db;
 
 export const authenticate = async (req, res, next) => {
   try {

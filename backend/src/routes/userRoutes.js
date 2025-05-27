@@ -7,6 +7,9 @@ import {
   getProfile,
   checkAuthStatus
 } from '../controllers/userController.js';
+import db from '../models/index.js';
+
+const { User } = db;
 
 const router = express.Router();
 

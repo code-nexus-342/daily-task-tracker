@@ -1,13 +1,16 @@
+'use strict';
+
+/** @type {import('sequelize-cli').Migration} */
 export default {
-  up: async (queryInterface, Sequelize) => {
+  async up(queryInterface, Sequelize) {
     await queryInterface.createTable('Tasks', {
       id: {
-        type: Sequelize.UUID,
-        defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
       },
       userId: {
-        type: Sequelize.UUID,
+        type: Sequelize.INTEGER,
         allowNull: false,
         references: {
           model: 'Users',
@@ -16,21 +19,21 @@ export default {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      research: {
-        type: Sequelize.TEXT,
+      title: {
+        type: Sequelize.STRING,
         allowNull: false
       },
-      files: {
-        type: Sequelize.ARRAY(Sequelize.STRING),
-        defaultValue: []
-      },
-      challenges: {
+      description: {
         type: Sequelize.TEXT,
         allowNull: true
       },
-      submissionDate: {
+      status: {
+        type: Sequelize.ENUM('pending', 'completed'),
+        defaultValue: 'pending'
+      },
+      dueDate: {
         type: Sequelize.DATE,
-        defaultValue: Sequelize.NOW
+        allowNull: true
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -43,7 +46,7 @@ export default {
     });
   },
 
-  down: async (queryInterface, Sequelize) => {
+  async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('Tasks');
   }
 }; 

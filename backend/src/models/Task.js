@@ -1,50 +1,54 @@
-import { Model, DataTypes } from 'sequelize';
-import { sequelize } from '../config/database.js';
-import User from './User.js';
+import { Model } from 'sequelize';
 
-class Task extends Model {}
+export default (sequelize, DataTypes) => {
+  class Task extends Model {
+    static associate(models) {
+      Task.belongsTo(models.User, {
+        foreignKey: 'userId',
+        as: 'user'
+      });
+    }
+  }
 
-Task.init(
-  {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true
-    },
-    userId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: User,
-        key: 'id'
+  Task.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+      },
+      userId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Users',
+          key: 'id'
+        }
+      },
+      title: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: true
+      },
+      status: {
+        type: DataTypes.ENUM('pending', 'completed'),
+        defaultValue: 'pending'
+      },
+      dueDate: {
+        type: DataTypes.DATE,
+        allowNull: true
       }
     },
-    research: {
-      type: DataTypes.TEXT,
-      allowNull: false
-    },
-    files: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      defaultValue: []
-    },
-    challenges: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    submissionDate: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW
+    {
+      sequelize,
+      modelName: 'Task',
+      tableName: 'Tasks',
+      timestamps: true
     }
-  },
-  {
-    sequelize,
-    modelName: 'Task',
-    timestamps: true
-  }
-);
+  );
 
-// Define associations
-Task.belongsTo(User, { foreignKey: 'userId' });
-User.hasMany(Task, { foreignKey: 'userId' });
-
-export default Task; 
+  return Task;
+}; 

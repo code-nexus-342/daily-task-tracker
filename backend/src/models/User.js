@@ -1,63 +1,55 @@
-import { Model, DataTypes } from 'sequelize';
-import { sequelize } from '../config/database.js';
-import jwt from 'jsonwebtoken';
+import { Model } from 'sequelize';
 
-class User extends Model {
-  generateAuthToken() {
-    return jwt.sign(
-      {
-        id: this.id,
-        role: this.role,
-        profileCompleted: this.profileCompleted
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+export default (sequelize, DataTypes) => {
+  class User extends Model {
+    static associate(models) {
+      User.hasMany(models.Task, {
+        foreignKey: 'userId',
+        as: 'tasks'
+      });
+    }
   }
-}
 
-User.init(
-  {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true
-    },
-    firebaseUid: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true
-    },
-    fullName: {
-      type: DataTypes.STRING,
-      allowNull: false
-    },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true
+  User.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+      },
+      firebaseUid: {
+        type: DataTypes.STRING,
+        unique: true,
+        allowNull: false
+      },
+      email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+        validate: {
+          isEmail: true
+        }
+      },
+      fullName: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
+      role: {
+        type: DataTypes.ENUM('user', 'admin'),
+        defaultValue: 'user'
+      },
+      lastTaskSubmission: {
+        type: DataTypes.DATE,
+        allowNull: true
       }
     },
-    role: {
-      type: DataTypes.ENUM('core', 'funder', 'guest'),
-      defaultValue: 'guest'
-    },
-    googleId: {
-      type: DataTypes.STRING,
-      unique: true
-    },
-    profileCompleted: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false
+    {
+      sequelize,
+      modelName: 'User',
+      tableName: 'Users',
+      timestamps: true
     }
-  },
-  {
-    sequelize,
-    modelName: 'User',
-    timestamps: true
-  }
-);
+  );
 
-export default User; 
+  return User;
+}; 

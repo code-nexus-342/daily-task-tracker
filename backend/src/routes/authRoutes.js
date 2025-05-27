@@ -1,8 +1,10 @@
 import express from 'express';
 import { auth } from '../config/firebase-admin.js';
-import { User } from '../models/index.js';
+import db from '../models/index.js';
 import { authenticate } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
+
+const { User } = db;
 
 const router = express.Router();
 
@@ -21,13 +23,18 @@ router.post('/verify-token', async (req, res) => {
     // Verify the Firebase ID token
     const decodedToken = await auth.verifyIdToken(token);
     
+    // Determine role based on name
+    const userNamesAsUser = ['Larry', 'Oscar', 'Enock', 'Ryan', 'Peter'];
+    const fullName = decodedToken.name || decodedToken.email.split('@')[0];
+    let role = userNamesAsUser.includes(fullName) ? 'user' : 'admin';
+
     // Find or create user
     const [user, created] = await User.findOrCreate({
       where: { firebaseUid: decodedToken.uid },
       defaults: {
         email: decodedToken.email,
-        fullName: decodedToken.name || decodedToken.email.split('@')[0],
-        role: 'guest',
+        fullName,
+        role,
         profileCompleted: false
       }
     });

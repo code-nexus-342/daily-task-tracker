@@ -1,72 +1,51 @@
 import nodemailer from 'nodemailer';
 import { logger } from './logger.js';
-import { User, Task } from '../models/index.js';
+import db from '../models/index.js';
 import { Op } from 'sequelize';
 
-// Create email transporter
+const { User, Task } = db;
+
+// Create a transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_PORT === '465',
+  secure: process.env.SMTP_SECURE === 'true',
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
   }
 });
 
-// Function to check for missed submissions
+// Check for missed submissions and send reminders
 export const checkMissedSubmissions = async () => {
   try {
-    // Get yesterday's date
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-
-    // Find users who haven't submitted tasks yesterday
+    // Get all users who haven't submitted a task in the last 24 hours
     const users = await User.findAll({
-      where: {
-        role: 'core',
-        '$Tasks.submissionDate$': {
-          [Op.not]: {
-            [Op.between]: [yesterday, new Date()]
-          }
-        }
-      },
       include: [{
         model: Task,
-        required: false,
         where: {
           submissionDate: {
-            [Op.between]: [yesterday, new Date()]
+            [Op.lt]: new Date(Date.now() - 24 * 60 * 60 * 1000)
           }
-        }
+        },
+        required: false
       }]
     });
 
     // Send reminder emails
     for (const user of users) {
-      try {
+      if (user.Tasks.length === 0) {
         await transporter.sendMail({
-          from: process.env.SMTP_USER,
+          from: process.env.SMTP_FROM,
           to: user.email,
           subject: 'Reminder: Daily Task Submission',
-          html: `
-            <h1>Daily Task Submission Reminder</h1>
-            <p>Dear ${user.fullName},</p>
-            <p>This is a reminder that you haven't submitted your daily task for yesterday (${yesterday.toLocaleDateString()}).</p>
-            <p>Please submit your task as soon as possible.</p>
-            <p>Best regards,<br>Daily Task System</p>
-          `
+          text: `Hi ${user.fullName},\n\nThis is a reminder that you haven't submitted your daily task yet. Please submit it as soon as possible.\n\nBest regards,\nYour App Team`
         });
 
         logger.info(`Reminder email sent to ${user.email}`);
-      } catch (error) {
-        logger.error(`Failed to send reminder email to ${user.email}:`, error);
       }
     }
-
-    logger.info('Email reminder check completed');
   } catch (error) {
-    logger.error('Error checking missed submissions:', error);
+    logger.error('Error sending reminder emails:', error);
   }
 }; 
