@@ -5,6 +5,7 @@ import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -24,12 +25,28 @@ const Login = () => {
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
+      console.log('Google sign in result:', result); // Debug log
+      
       // Get the ID token
       const idToken = await result.user.getIdToken();
+      console.log('Got Firebase token:', idToken); // Debug log
+      
+      if (!idToken) {
+        throw new Error('No Firebase token received');
+      }
+
+      // Store token in localStorage immediately
+      localStorage.setItem('token', idToken);
+      console.log('Stored token in localStorage:', localStorage.getItem('token')); // Debug log
+      
+      // Pass the Firebase token to login function
       await login(idToken);
+      
       toast.success('Login successful!');
     } catch (error) {
       console.error('Login error:', error);
+      // Clear token if login fails
+      localStorage.removeItem('token');
       toast.error('Login failed. Please try again.');
     }
   };

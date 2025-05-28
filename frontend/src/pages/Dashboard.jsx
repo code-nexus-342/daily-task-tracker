@@ -6,7 +6,7 @@ import axios from 'axios';
 import { Upload, FileText, Image } from 'lucide-react';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, checkAuthStatus } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [formData, setFormData] = useState({
     research: '',
@@ -21,13 +21,29 @@ const Dashboard = () => {
 
   const fetchTasks = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/tasks/all`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+      if (!user?.email) {
+        console.log('No user email found');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/tasks/my-tasks/${user.email}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
-      setTasks(response.data.data.tasks);
+      );
+      
+      console.log('Tasks response:', response.data); // Debug log
+      setTasks(response.data.tasks || []);
     } catch (error) {
+      console.error('Fetch tasks error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       toast.error('Failed to fetch tasks');
     }
   };
@@ -37,28 +53,40 @@ const Dashboard = () => {
     setLoading(true);
 
     try {
+      if (!user?.email) {
+        toast.error('User not authenticated');
+        return;
+      }
+
       const formDataToSend = new FormData();
       formDataToSend.append('research', formData.research);
       formDataToSend.append('challenges', formData.challenges);
+      formDataToSend.append('userEmail', user.email);
       formData.files.forEach(file => {
         formDataToSend.append('files', file);
       });
 
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/tasks/submit`,
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/tasks/submit`,
         formDataToSend,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'multipart/form-data'
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
+      console.log('Submit response:', response.data); // Debug log
       toast.success('Task submitted successfully!');
       setFormData({ research: '', challenges: '', files: [] });
       fetchTasks();
     } catch (error) {
+      console.error('Submit task error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       toast.error('Failed to submit task');
     } finally {
       setLoading(false);
@@ -85,7 +113,7 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Task Submission Form */}
-          {user?.role === 'core' && (
+          {user && (
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -103,6 +131,7 @@ const Dashboard = () => {
                     rows="4"
                     value={formData.research}
                     onChange={(e) => setFormData(prev => ({ ...prev, research: e.target.value }))}
+                    placeholder="Enter your daily research findings here..."
                   />
                 </div>
 
@@ -115,6 +144,7 @@ const Dashboard = () => {
                     rows="3"
                     value={formData.challenges}
                     onChange={(e) => setFormData(prev => ({ ...prev, challenges: e.target.value }))}
+                    placeholder="Describe any challenges you faced..."
                   />
                 </div>
 
@@ -140,30 +170,6 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                {formData.files.length > 0 && (
-                  <div className="space-y-2">
-                    {formData.files.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <div className="flex items-center">
-                          {file.type.startsWith('image/') ? (
-                            <Image className="h-5 w-5 text-gray-400" />
-                          ) : (
-                            <FileText className="h-5 w-5 text-gray-400" />
-                          )}
-                          <span className="ml-2 text-sm text-gray-600">{file.name}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 <button
                   type="submit"
                   disabled={loading}
@@ -187,39 +193,13 @@ const Dashboard = () => {
                 <div key={task.id} className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium">{task.user.fullName}</h3>
+                      <h3 className="font-medium">{task.user?.fullName || 'Unknown User'}</h3>
                       <p className="text-sm text-gray-500">
-                        {new Date(task.submissionDate).toLocaleDateString()}
+                        {new Date(task.submittedAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                  <div className="mt-2">
-                    <p className="text-gray-700">{task.research}</p>
-                    {task.challenges && (
-                      <div className="mt-2">
-                        <p className="text-sm font-medium text-gray-500">Challenges:</p>
-                        <p className="text-gray-600">{task.challenges}</p>
-                      </div>
-                    )}
-                    {task.files.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-sm font-medium text-gray-500">Attachments:</p>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {task.files.map((file, index) => (
-                            <a
-                              key={index}
-                              href={file}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-primary-700 bg-primary-100 rounded"
-                            >
-                              {file.split('/').pop()}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <p className="text-gray-700">{task.research}</p>
                 </div>
               ))}
             </div>
@@ -230,4 +210,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

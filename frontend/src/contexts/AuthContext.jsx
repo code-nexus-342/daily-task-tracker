@@ -24,17 +24,22 @@ export const AuthProvider = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('Checking auth status with token from localStorage:', token); // Debug log
+
       if (!token) {
+        console.log('No token found in localStorage');
         setLoading(false);
         return;
       }
 
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/me`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
+      console.log('Auth status response:', response.data); // Debug log
       setUser(response.data.data.user);
       setIsAuthenticated(true);
     } catch (error) {
@@ -49,14 +54,46 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (token) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/verify-token`, {
-        token
-      });
+      console.log('Login attempt with token:', token); // Debug log
       
-      localStorage.setItem('token', response.data.data.token);
-      await checkAuthStatus();
+      if (!token) {
+        throw new Error('No token provided to login function');
+      }
+
+      // Store the Firebase token first
+      console.log('Storing Firebase token in localStorage:', token); // Debug log
+      localStorage.setItem('token', token);
+      
+      // Verify token was stored
+      const storedToken = localStorage.getItem('token');
+      console.log('Verified stored token:', storedToken); // Debug log
+      
+      if (!storedToken) {
+        throw new Error('Failed to store token in localStorage');
+      }
+
+      // Then verify with backend
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/auth/verify-token`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      console.log('Login response:', response.data); // Debug log
+      
+      // Update user state
+      setUser(response.data.user);
+      setIsAuthenticated(true);
+      
+      return response.data;
     } catch (error) {
       console.error('Login error:', error);
+      // Clear token if login fails
+      localStorage.removeItem('token');
       toast.error('Login failed. Please try again.');
       throw error;
     }
@@ -71,7 +108,7 @@ export const AuthProvider = ({ children }) => {
   const completeProfile = async (profileData) => {
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/users/complete-profile`,
+        `${import.meta.env.VITE_API_URL}/users/profile`,
         profileData,
         {
           headers: {
@@ -79,9 +116,7 @@ export const AuthProvider = ({ children }) => {
           }
         }
       );
-
-      setUser(response.data.data.user);
-      localStorage.setItem('token', response.data.data.token);
+      setUser(response.data.user);
       return response.data;
     } catch (error) {
       console.error('Profile completion error:', error);
@@ -102,4 +137,4 @@ export const AuthProvider = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export default AuthContext; 
+export default AuthContext;
