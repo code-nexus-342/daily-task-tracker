@@ -1,53 +1,38 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user, login } = useAuth();
-  const provider = new GoogleAuthProvider();
+  const { login } = useAuth();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      if (user?.isProfileCompleted) {
-        navigate('/dashboard');
-      } else {
-        navigate('/complete-profile');
-      }
-    }
-  }, [isAuthenticated, user, navigate]);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
-  const handleGoogleLogin = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+  
     try {
-      const result = await signInWithPopup(auth, provider);
-      console.log('Google sign in result:', result); // Debug log
-      
-      // Get the ID token
-      const idToken = await result.user.getIdToken();
-      console.log('Got Firebase token:', idToken); // Debug log
-      
-      if (!idToken) {
-        throw new Error('No Firebase token received');
-      }
-
-      // Store token in localStorage immediately
-      localStorage.setItem('token', idToken);
-      console.log('Stored token in localStorage:', localStorage.getItem('token')); // Debug log
-      
-      // Pass the Firebase token to login function
-      await login(idToken);
-      
+      const { user } = await login(formData.email, formData.password);
       toast.success('Login successful!');
+      navigate('/dashboard');
     } catch (error) {
-      console.error('Login error:', error);
-      // Clear token if login fails
-      localStorage.removeItem('token');
-      toast.error('Login failed. Please try again.');
+      // Error already handled in login
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,19 +49,56 @@ const Login = () => {
             Welcome to Daily Task
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to manage your daily tasks
+            Or{' '}
+            <Link to="/signup" className="font-medium text-primary-600 hover:text-primary-500">
+              create a new account
+            </Link>
           </p>
         </div>
-        <div className="mt-8 space-y-6">
-          <div className="flex justify-center">
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm space-y-4">
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className="input"
+                placeholder="Email address"
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="input"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <div>
             <button
-              onClick={handleGoogleLogin}
-              className="btn btn-primary"
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full"
             >
-              Sign in with Google
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
-        </div>
+        </form>
       </motion.div>
     </div>
   );
