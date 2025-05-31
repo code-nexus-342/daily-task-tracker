@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "build": "set NODE_ENV=production && npm install && set NODE_ENV=production && npx sequelize-cli db:migrate --env production"
+    "build": "set NODE_ENV=production && npm install -g sequelize-cli && npm install && set NODE_ENV=production && sequelize-cli db:migrate --env production"
   },
   "keywords": [],
   "author": "",
@@ -73,6 +73,7 @@
     "send": "0.18.0",
     "serve-static": "1.15.0",
     "sequelize": "6.31.0",
+    "sequelize-cli": "6.6.2",
     "setprototypeof": "1.2.0",
     "side-channel": "1.0.4",
     "statuses": "2.0.1",
