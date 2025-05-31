@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: daily-task-backend
+    env: node
+    nodeVersion: 20.19.2
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true 
