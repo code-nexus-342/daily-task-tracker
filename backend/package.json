@@ -1,16 +1,15 @@
 {
   "name": "daily-task-backend",
   "version": "1.0.0",
-  "type": "module",
   "description": "Backend for Daily Task application",
   "main": "app.js",
   "engines": {
-    "node": "22.x"
+    "node": "20.x"
   },
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "build": "npm install && npm install -g sequelize-cli && NODE_ENV=production npx sequelize-cli db:migrate --env production"
+    "build": "npm install && NODE_ENV=production npx sequelize-cli db:migrate --env production"
   },
   "keywords": [],
   "author": "",
