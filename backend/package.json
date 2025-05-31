@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "build": "cross-env NODE_ENV=production npm install -g sequelize-cli && npm install && cross-env NODE_ENV=production npx sequelize-cli db:migrate --env production"
+    "build": "npm install -g sequelize-cli && npm install && NODE_ENV=production npx sequelize-cli db:migrate --env production"
   },
   "keywords": [],
   "author": "",
