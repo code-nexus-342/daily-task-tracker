@@ -4,6 +4,9 @@
   "type": "module",
   "description": "Backend for Daily Task application",
   "main": "app.js",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
