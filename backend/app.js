@@ -90,7 +90,7 @@ try {
   }
 }
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 try {
   await app.listen({ port: PORT, host: '0.0.0.0' });
   app.log.info(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
