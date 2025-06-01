@@ -2,22 +2,22 @@ import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-export const register = async (req, res) => {
+export const register = async (request, reply) => {
   try {
-    console.log('Registration request body:', req.body);
-    const { email, password, name } = req.body;
+    console.log('Registration request body:', request.body);
+    const { email, password, name } = request.body;
 
     // Validate input
     if (!email || !password) {
       console.log('Missing required fields:', { email: !!email, password: !!password });
-      return res.status(400).json({ message: 'Email and password are required' });
+      return reply.code(400).send({ message: 'Email and password are required' });
     }
 
     // Check if user exists
     const existing = await User.findOne({ where: { email } });
     if (existing) {
       console.log('Email already registered:', email);
-      return res.status(400).json({ message: 'Email already registered' });
+      return reply.code(400).send({ message: 'Email already registered' });
     }
 
     // Hash password
@@ -39,7 +39,7 @@ export const register = async (req, res) => {
     );
 
     // Return user data (excluding password)
-    res.status(201).json({
+    return reply.code(201).send({
       message: 'User registered successfully',
       token,
       user: {
@@ -50,29 +50,29 @@ export const register = async (req, res) => {
     });
   } catch (error) {
     console.error('Registration Error:', error);
-    res.status(500).json({ message: 'Registration failed', error: error.message });
+    return reply.code(500).send({ message: 'Registration failed', error: error.message });
   }
 };
 
-export const login = async (req, res) => {
+export const login = async (request, reply) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = request.body;
 
     // Validate input
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+      return reply.code(400).send({ message: 'Email and password are required' });
     }
 
     // Find user
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return reply.code(401).send({ message: 'Invalid credentials' });
     }
 
     // Verify password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return reply.code(401).send({ message: 'Invalid credentials' });
     }
 
     // Generate token
@@ -83,7 +83,7 @@ export const login = async (req, res) => {
     );
 
     // Return user data (excluding password)
-    res.json({
+    return reply.send({
       message: 'Login successful',
       token,
       user: {
@@ -96,24 +96,24 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error('Login Error:', error);
-    res.status(500).json({ message: 'Login failed', error: error.message });
+    return reply.code(500).send({ message: 'Login failed', error: error.message });
   }
 };
 
-export const getProfile = async (req, res) => {
+export const getProfile = async (request, reply) => {
   try {
-    const user = await User.findByPk(req.user.id, {
+    const user = await User.findByPk(request.user.id, {
       attributes: { exclude: ['password'] }
     });
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return reply.code(404).send({ message: 'User not found' });
     }
 
-    res.json({ user });
+    return reply.send({ user });
   } catch (error) {
     console.error('Get Profile Error:', error);
-    res.status(500).json({ message: 'Failed to get profile', error: error.message });
+    return reply.code(500).send({ message: 'Failed to get profile', error: error.message });
   }
 };
 
