@@ -22,9 +22,9 @@ const app = Fastify({
 
 // Register plugins
 await app.register(cors, {
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL 
-    : ['https://planmorph.onrender.com', 'https://planmorph.onrender.com', 'https://planmorph.onrender.com'],
+  origin: ['http://localhost:3000', 'https://planmorph.onrender.com'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 });
 
@@ -90,12 +90,18 @@ try {
   }
 }
 
+// Get port from environment variable or use default
 const PORT = process.env.PORT || 5000;
+
+// Start server
 try {
-  await app.listen({ port: PORT, host: '0.0.0.0' });
-  app.log.info(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  await app.listen({ 
+    port: PORT, 
+    host: '0.0.0.0'  // This is important for Render
+  });
+  app.log.info(`Server running in ${process.env.NODE_ENV || 'production'} mode on port ${PORT}`);
 } catch (err) {
-  app.log.error(err);
+  app.log.error('Failed to start server:', err);
   process.exit(1);
 }
 
