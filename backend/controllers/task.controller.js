@@ -1,55 +1,90 @@
 import Task from '../models/task.model.js';
+import { v2 as cloudinary } from 'cloudinary';
 
-export const submitTask = async (req, res) => {
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+export const submitTask = async (request, reply) => {
   try {
-    console.log('Submit Task Request:', { user: req.user, body: req.body, files: req.files });
+    console.log('Submit Task Request:', { user: request.user });
 
-    if (!req.user || !req.user.email) {
-      return res.status(401).json({ message: 'Unauthorized: Missing user data' });
+    if (!request.user || !request.user.email) {
+      return reply.code(401).send({ message: 'Unauthorized: Missing user data' });
     }
 
-    const userEmail = req.user.email;
-    const files = req.files?.map(file => ({
-      name: file.originalname,
-      url: file.filename,
-      type: file.mimetype,
-      size: file.size,
-    }));
+    const userEmail = request.user.email;
+    const parts = request.parts();
+    let files = [];
+    let body = {};
+
+    for await (const part of parts) {
+      if (part.file) {
+        // Upload file to Cloudinary
+        const buffer = await part.toBuffer();
+        const result = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_stream({
+            resource_type: part.mimetype === 'application/pdf' ? 'raw' : 'auto',
+            folder: 'task-uploads',
+            access_mode: 'public',
+            format: part.mimetype === 'application/pdf' ? 'pdf' : undefined,
+            type: 'upload'
+          }, (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }).end(buffer);
+        });
+
+        files.push({
+          name: part.filename,
+          url: result.secure_url,
+          type: part.mimetype,
+          size: result.bytes,
+          public_id: result.public_id
+        });
+      } else {
+        // Handle fields
+        body[part.fieldname] = part.value;
+      }
+    }
 
     const task = await Task.create({
       userEmail,
-      research: req.body.research,
-      challenges: req.body.challenges,
-      files: files ? JSON.stringify(files) : null,
+      research: body.research,
+      challenges: body.challenges,
+      files: files.length > 0 ? JSON.stringify(files) : null,
       status: 'pending',
       submittedAt: new Date()
     });
 
-    res.status(201).json({ 
+    return reply.code(201).send({ 
       message: 'Task submitted successfully', 
       task: {
         ...task.toJSON(),
-        files: files || []
+        files: files
       }
     });
   } catch (err) {
     console.error('Task Submission Error:', err);
-    res.status(500).json({ message: 'Error submitting task', error: err.message });
+    return reply.code(500).send({ message: 'Error submitting task', error: err.message });
   }
 };
 
-export const getMyTasks = async (req, res) => {
+export const getMyTasks = async (request, reply) => {
   try {
-    console.log('Fetching tasks for user:', req.user);
+    console.log('Fetching tasks for user:', request.user);
 
-    if (!req.user || !req.user.email) {
-      return res.status(401).json({ message: 'Unauthorized: Missing user data' });
+    if (!request.user || !request.user.email) {
+      return reply.code(401).send({ message: 'Unauthorized: Missing user data' });
     }
 
-    const { email } = req.params;
+    const { email } = request.params;
 
-    if (req.user.email.toLowerCase() !== email.toLowerCase()) {
-      return res.status(403).json({ message: 'Forbidden: You can only fetch your own tasks' });
+    if (request.user.email.toLowerCase() !== email.toLowerCase()) {
+      return reply.code(403).send({ message: 'Forbidden: You can only fetch your own tasks' });
     }
 
     const tasks = await Task.findAll({ 
@@ -63,19 +98,19 @@ export const getMyTasks = async (req, res) => {
       files: task.files ? JSON.parse(task.files) : []
     }));
 
-    res.json({ message: 'Tasks retrieved successfully', tasks: tasksWithFiles });
+    return reply.send({ message: 'Tasks retrieved successfully', tasks: tasksWithFiles });
   } catch (err) {
     console.error('Task Retrieval Error:', err);
-    res.status(500).json({ message: 'Error fetching tasks', error: err.message });
+    return reply.code(500).send({ message: 'Error fetching tasks', error: err.message });
   }
 };
 
-export const getAllTasks = async (req, res) => {
+export const getAllTasks = async (request, reply) => {
   try {
     console.log('Fetching all tasks');
 
-    if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized: Missing user data' });
+    if (!request.user) {
+      return reply.code(401).send({ message: 'Unauthorized: Missing user data' });
     }
 
     const tasks = await Task.findAll({
@@ -89,70 +124,70 @@ export const getAllTasks = async (req, res) => {
       files: task.files ? JSON.parse(task.files) : []
     }));
 
-    res.json({ message: 'All tasks retrieved successfully', tasks: tasksWithFiles });
+    return reply.send({ message: 'All tasks retrieved successfully', tasks: tasksWithFiles });
   } catch (err) {
     console.error('All Tasks Retrieval Error:', err);
-    res.status(500).json({ message: 'Error fetching all tasks', error: err.message });
+    return reply.code(500).send({ message: 'Error fetching all tasks', error: err.message });
   }
 };
 
-export const updateTaskStatus = async (req, res) => {
+export const updateTaskStatus = async (request, reply) => {
   try {
-    const { taskId } = req.params;
-    const { status } = req.body;
+    const { taskId } = request.params;
+    const { status } = request.body;
 
-    if (!req.user || !req.user.email) {
-      return res.status(401).json({ message: 'Unauthorized: Missing user data' });
+    if (!request.user || !request.user.email) {
+      return reply.code(401).send({ message: 'Unauthorized: Missing user data' });
     }
 
     const task = await Task.findByPk(taskId);
     if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
+      return reply.code(404).send({ message: 'Task not found' });
     }
 
     // Only allow users to update their own tasks
-    if (task.userEmail.toLowerCase() !== req.user.email.toLowerCase()) {
-      return res.status(403).json({ message: 'Forbidden: You can only update your own tasks' });
+    if (task.userEmail.toLowerCase() !== request.user.email.toLowerCase()) {
+      return reply.code(403).send({ message: 'Forbidden: You can only update your own tasks' });
     }
 
     // Validate status
     const validStatuses = ['pending', 'completed', 'review'];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: 'Invalid status' });
+      return reply.code(400).send({ message: 'Invalid status' });
     }
 
     task.status = status;
     await task.save();
 
-    res.json({ message: 'Task status updated successfully', task });
+    return reply.send({ message: 'Task status updated successfully', task });
   } catch (err) {
     console.error('Task Status Update Error:', err);
-    res.status(500).json({ message: 'Error updating task status', error: err.message });
+    return reply.code(500).send({ message: 'Error updating task status', error: err.message });
   }
 };
 
-export const deleteTask = async (req, res) => {
+export const deleteTask = async (request, reply) => {
   try {
-    const { taskId } = req.params;
+    const { taskId } = request.params;
 
-    if (!req.user || !req.user.email) {
-      return res.status(401).json({ message: 'Unauthorized: Missing user data' });
+    if (!request.user || !request.user.email) {
+      return reply.code(401).send({ message: 'Unauthorized: Missing user data' });
     }
 
     const task = await Task.findByPk(taskId);
     if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
+      return reply.code(404).send({ message: 'Task not found' });
     }
 
     // Only allow users to delete their own tasks
-    if (task.userEmail.toLowerCase() !== req.user.email.toLowerCase()) {
-      return res.status(403).json({ message: 'Forbidden: You can only delete your own tasks' });
+    if (task.userEmail.toLowerCase() !== request.user.email.toLowerCase()) {
+      return reply.code(403).send({ message: 'Forbidden: You can only delete your own tasks' });
     }
 
     await task.destroy();
-    res.json({ message: 'Task deleted successfully' });
+    return reply.send({ message: 'Task deleted successfully' });
   } catch (err) {
     console.error('Task Deletion Error:', err);
-    res.status(500).json({ message: 'Error deleting task', error: err.message });
+    return reply.code(500).send({ message: 'Error deleting task', error: err.message });
   }
 };

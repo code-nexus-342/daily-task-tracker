@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 export const register = async (request, reply) => {
   try {
     console.log('Registration request body:', request.body);
-    const { email, password, name } = request.body;
+    const { email, password } = request.body;
 
     // Validate input
     if (!email || !password) {
@@ -14,8 +14,8 @@ export const register = async (request, reply) => {
     }
 
     // Check if user exists
-    const existing = await User.findOne({ where: { email } });
-    if (existing) {
+    const existingEmail = await User.findOne({ where: { email } });
+    if (existingEmail) {
       console.log('Email already registered:', email);
       return reply.code(400).send({ message: 'Email already registered' });
     }
@@ -27,8 +27,7 @@ export const register = async (request, reply) => {
     // Create user
     const user = await User.create({
       email,
-      password: hash,
-      name
+      password: hash
     });
 
     // Generate token
@@ -45,7 +44,7 @@ export const register = async (request, reply) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name
+        role: user.role
       }
     });
   } catch (error) {
@@ -89,9 +88,7 @@ export const login = async (request, reply) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
-        role: user.role,
-        profileComplete: user.profileComplete
+        role: user.role
       }
     });
   } catch (error) {
@@ -147,55 +144,59 @@ export const completeProfile = async (req, res) => {
 };
 
 // Admin functions
-export const getAllUsers = async (req, res) => {
+export const getAllUsers = async (request, reply) => {
   try {
     const users = await User.findAll({
       attributes: ['id', 'email', 'role', 'createdAt'],
       order: [['createdAt', 'DESC']]
     });
     
-    res.json({ users });
+    return reply.send({ users });
   } catch (error) {
     console.error('Get all users error:', error);
-    res.status(500).json({ message: 'Failed to fetch users' });
+    return reply.code(500).send({ message: 'Failed to fetch users' });
   }
 };
 
-export const promoteUser = async (req, res) => {
+export const promoteUser = async (request, reply) => {
   try {
-    const user = await User.findByPk(req.params.userId);
+    const user = await User.findByPk(request.params.userId);
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return reply.code(404).send({ message: 'User not found' });
+    }
+    
+    if (user.role === 'admin') {
+      return reply.code(400).send({ message: 'User is already an admin' });
     }
     
     user.role = 'admin';
     await user.save();
     
-    res.json({ message: 'User promoted to admin successfully' });
+    return reply.send({ message: 'User promoted to admin successfully' });
   } catch (error) {
     console.error('Promote user error:', error);
-    res.status(500).json({ message: 'Failed to promote user' });
+    return reply.code(500).send({ message: 'Failed to promote user' });
   }
 };
 
-export const deleteUser = async (req, res) => {
+export const deleteUser = async (request, reply) => {
   try {
-    const user = await User.findByPk(req.params.userId);
+    const user = await User.findByPk(request.params.userId);
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return reply.code(404).send({ message: 'User not found' });
     }
     
     if (user.role === 'admin') {
-      return res.status(403).json({ message: 'Cannot delete admin users' });
+      return reply.code(403).send({ message: 'Cannot delete admin users' });
     }
     
     await user.destroy();
     
-    res.json({ message: 'User deleted successfully' });
+    return reply.send({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Delete user error:', error);
-    res.status(500).json({ message: 'Failed to delete user' });
+    return reply.code(500).send({ message: 'Failed to delete user' });
   }
 };

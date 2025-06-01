@@ -5,13 +5,41 @@ import { isAdmin } from '../middleware/admin.middleware.js';
 export default async function (fastify, opts) {
   // Public routes
   fastify.post('/register', register);
-  fastify.post('/login', login);
+  
+  // Login route with schema
+  fastify.post('/login', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['email', 'password'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          password: { type: 'string', minLength: 6 }
+        }
+      }
+    },
+    handler: login
+  });
 
   // Protected routes
-  fastify.get('/me', { preHandler: authenticate }, getProfile);
+  fastify.get('/me', {
+    onRequest: [authenticate],
+    handler: getProfile
+  });
 
   // Admin routes
-  fastify.get('/', { preHandler: [authenticate, isAdmin] }, getAllUsers);
-  fastify.post('/:userId/promote', { preHandler: [authenticate, isAdmin] }, promoteUser);
-  fastify.post('/:userId/delete', { preHandler: [authenticate, isAdmin] }, deleteUser);
+  fastify.get('/', {
+    onRequest: [authenticate, isAdmin],
+    handler: getAllUsers
+  });
+
+  fastify.post('/:userId/promote', {
+    onRequest: [authenticate, isAdmin],
+    handler: promoteUser
+  });
+
+  fastify.post('/:userId/delete', {
+    onRequest: [authenticate, isAdmin],
+    handler: deleteUser
+  });
 }

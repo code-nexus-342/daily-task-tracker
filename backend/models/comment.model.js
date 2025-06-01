@@ -6,7 +6,7 @@ const Comment = sequelize.define('Comment', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   taskId: { 
     type: DataTypes.INTEGER, 
-    allowNull: false,
+    allowNull: false, 
     references: {
       model: 'Tasks',
       key: 'id'

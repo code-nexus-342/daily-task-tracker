@@ -10,29 +10,49 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { authenticate } from './middleware/auth.middleware.js';
 import commentRoutes from './routes/comment.routes.js';
+import fs from 'fs';
+import { createReadStream } from 'fs';
 
+// Load environment variables first
 dotenv.config();
+
+// Log environment variables (excluding sensitive ones)
+console.log('Environment:', {
+  NODE_ENV: process.env.NODE_ENV,
+  PORT: process.env.PORT,
+  DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not Set',
+  JWT_SECRET: process.env.JWT_SECRET ? 'Set' : 'Not Set'
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = Fastify({
-  logger: process.env.NODE_ENV !== 'production'
+  logger: true // Enable logging in all environments
 });
 
 // Register plugins
-await app.register(cors, {
-  origin: ['http://localhost:3000', 'https://planmorph.onrender.com'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-});
+try {
+  await app.register(cors, {
+    origin: ['http://localhost:3000', 'https://planmorph.onrender.com'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+  });
+  console.log('CORS plugin registered successfully');
 
-await app.register(multipart);
-await app.register(staticFiles, {
-  root: path.join(__dirname, 'uploads'),
-  prefix: '/uploads/'
-});
+  await app.register(multipart);
+  console.log('Multipart plugin registered successfully');
+
+  await app.register(staticFiles, {
+    root: path.join(__dirname, 'uploads'),
+    prefix: '/uploads/'
+  });
+  console.log('Static files plugin registered successfully');
+} catch (error) {
+  console.error('Error registering plugins:', error);
+  process.exit(1);
+}
 
 // Add download route for files
 app.get('/download/:filename', async (request, reply) => {
@@ -48,16 +68,80 @@ app.get('/download/:filename', async (request, reply) => {
 });
 
 // Register routes
-app.register(userRoutes, { prefix: '/api/users' });
-app.register(taskRoutes, { prefix: '/api/tasks', preHandler: authenticate });
-app.register(commentRoutes, { prefix: '/api/comments' });
+try {
+  console.log('Registering routes...');
+  
+  // Register user routes first
+  await app.register(userRoutes, { prefix: '/api/users' });
+  console.log('User routes registered at /api/users');
+  
+  // Register other routes
+  await app.register(taskRoutes, { prefix: '/api/tasks', preHandler: authenticate });
+  console.log('Task routes registered at /api/tasks');
+  
+  await app.register(commentRoutes, { prefix: '/api/comments' });
+  console.log('Comment routes registered at /api/comments');
+
+  // Add a test route to verify routing
+  app.get('/api/test', async (request, reply) => {
+    return { message: 'API is working' };
+  });
+  console.log('Test route registered at /api/test');
+
+  // Serve files with authentication
+  app.get('/uploads/:filename', {
+    onRequest: [authenticate],
+    handler: async (request, reply) => {
+      try {
+        const { filename } = request.params;
+        const filePath = path.join(__dirname, 'uploads', filename);
+        
+        // Check if file exists
+        try {
+          await fs.promises.access(filePath);
+        } catch (err) {
+          return reply.code(404).send({ message: 'File not found' });
+        }
+
+        // Get file stats
+        const stats = await fs.promises.stat(filePath);
+        
+        // Set appropriate headers
+        const contentType = filename.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream';
+        reply.header('Content-Type', contentType);
+        reply.header('Content-Length', stats.size);
+        // Force inline viewing for PDFs
+        reply.header('Content-Disposition', filename.endsWith('.pdf') ? 'inline' : 'attachment');
+        reply.header('Cache-Control', 'public, max-age=31536000');
+        reply.header('Accept-Ranges', 'bytes');
+        
+        // Stream the file
+        const stream = createReadStream(filePath);
+        return reply.send(stream);
+      } catch (err) {
+        console.error('Error serving file:', err);
+        return reply.code(500).send({ message: 'Error serving file' });
+      }
+    }
+  });
+
+} catch (error) {
+  console.error('Error registering routes:', error);
+  process.exit(1);
+}
 
 // Health check endpoint
 app.get('/health', async () => ({ status: 'ok' }));
 
 // Error handling
 app.setErrorHandler((error, request, reply) => {
-  app.log.error(error);
+  console.error('Request error:', {
+    url: request.url,
+    method: request.method,
+    error: error.message,
+    stack: error.stack
+  });
+  
   const statusCode = error.statusCode || 500;
   const message = process.env.NODE_ENV === 'production' 
     ? 'Something went wrong!' 
@@ -71,7 +155,10 @@ app.setErrorHandler((error, request, reply) => {
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  app.log.error('Unhandled Promise Rejection:', err);
+  console.error('Unhandled Promise Rejection:', {
+    error: err.message,
+    stack: err.stack
+  });
   // Don't crash the server in production
   if (process.env.NODE_ENV !== 'production') {
     process.exit(1);
@@ -80,10 +167,14 @@ process.on('unhandledRejection', (err) => {
 
 // Sync database
 try {
+  console.log('Attempting to sync database...');
   await sequelize.sync();
-  app.log.info('Database synced');
+  console.log('Database synced successfully');
 } catch (err) {
-  app.log.error('DB sync error:', err);
+  console.error('Database sync error:', {
+    message: err.message,
+    stack: err.stack
+  });
   // Don't crash the server in production
   if (process.env.NODE_ENV !== 'production') {
     process.exit(1);
@@ -95,13 +186,18 @@ const PORT = process.env.PORT || 5000;
 
 // Start server
 try {
+  console.log(`Attempting to start server on port ${PORT}...`);
   await app.listen({ 
     port: PORT, 
     host: '0.0.0.0'  // This is important for Render
   });
-  app.log.info(`Server running in ${process.env.NODE_ENV || 'production'} mode on port ${PORT}`);
+  console.log(`Server running in ${process.env.NODE_ENV || 'production'} mode on port ${PORT}`);
 } catch (err) {
-  app.log.error('Failed to start server:', err);
+  console.error('Failed to start server:', {
+    message: err.message,
+    stack: err.stack,
+    port: PORT
+  });
   process.exit(1);
 }
 

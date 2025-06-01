@@ -1,28 +1,22 @@
-import express from 'express';
+import { addComment, getTaskComments, deleteComment } from '../controllers/comment.controller.js';
+import { authenticate } from '../middleware/auth.middleware.js';
 
-import { authenticateToken } from '../middleware/auth.js';
-import {
-  addComment,
-  getTaskComments,
-  updateComment,
-  deleteComment
-} from '../controllers/comment.controller.js';
+export default async function (fastify, opts) {
+  // Add a comment to a task
+  fastify.post('/:taskId', {
+    onRequest: [authenticate],
+    handler: addComment
+  });
 
-const router = express.Router();
+  // Get all comments for a task
+  fastify.get('/:taskId', {
+    onRequest: [authenticate],
+    handler: getTaskComments
+  });
 
-// All routes require authentication
-router.use(authenticateToken);
-
-// Get comments for a task
-router.get('/task/:taskId', getTaskComments);
-
-// Add a comment to a task
-router.post('/task/:taskId', addComment);
-
-// Update a comment
-router.put('/:commentId', updateComment);
-
-// Delete a comment
-router.delete('/:commentId', deleteComment);
-
-export default router; 
+  // Delete a comment
+  fastify.delete('/:commentId', {
+    onRequest: [authenticate],
+    handler: deleteComment
+  });
+} 

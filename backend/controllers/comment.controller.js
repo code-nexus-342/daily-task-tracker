@@ -1,16 +1,16 @@
 import Comment from '../models/comment.model.js';
 import Task from '../models/task.model.js';
 
-export const addComment = async (req, res) => {
+export const addComment = async (request, reply) => {
   try {
-    const { taskId } = req.params;
-    const { content } = req.body;
-    const userEmail = req.user.email;
+    const { taskId } = request.params;
+    const { content } = request.body;
+    const userEmail = request.user.email;
 
     // Check if task exists
     const task = await Task.findByPk(taskId);
     if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
+      return reply.code(404).send({ message: 'Task not found' });
     }
 
     const comment = await Comment.create({
@@ -19,72 +19,72 @@ export const addComment = async (req, res) => {
       content
     });
 
-    res.status(201).json({ comment });
+    return reply.code(201).send({ comment });
   } catch (error) {
     console.error('Error adding comment:', error);
-    res.status(500).json({ message: 'Failed to add comment' });
+    return reply.code(500).send({ message: 'Failed to add comment' });
   }
 };
 
-export const getTaskComments = async (req, res) => {
+export const getTaskComments = async (request, reply) => {
   try {
-    const { taskId } = req.params;
+    const { taskId } = request.params;
 
     const comments = await Comment.findAll({
       where: { taskId },
       order: [['createdAt', 'DESC']]
     });
 
-    res.json({ comments });
+    return reply.send({ comments });
   } catch (error) {
     console.error('Error fetching comments:', error);
-    res.status(500).json({ message: 'Failed to fetch comments' });
+    return reply.code(500).send({ message: 'Failed to fetch comments' });
   }
 };
 
-export const updateComment = async (req, res) => {
+export const updateComment = async (request, reply) => {
   try {
-    const { commentId } = req.params;
-    const { content } = req.body;
-    const userEmail = req.user.email;
+    const { commentId } = request.params;
+    const { content } = request.body;
+    const userEmail = request.user.email;
 
     const comment = await Comment.findByPk(commentId);
     if (!comment) {
-      return res.status(404).json({ message: 'Comment not found' });
+      return reply.code(404).send({ message: 'Comment not found' });
     }
 
     // Check if user is the comment author
     if (comment.userEmail !== userEmail) {
-      return res.status(403).json({ message: 'Not authorized to update this comment' });
+      return reply.code(403).send({ message: 'Not authorized to update this comment' });
     }
 
     await comment.update({ content });
-    res.json({ comment });
+    return reply.send({ comment });
   } catch (error) {
     console.error('Error updating comment:', error);
-    res.status(500).json({ message: 'Failed to update comment' });
+    return reply.code(500).send({ message: 'Failed to update comment' });
   }
 };
 
-export const deleteComment = async (req, res) => {
+export const deleteComment = async (request, reply) => {
   try {
-    const { commentId } = req.params;
-    const userEmail = req.user.email;
+    const { commentId } = request.params;
+    const userEmail = request.user.email;
 
     const comment = await Comment.findByPk(commentId);
     if (!comment) {
-      return res.status(404).json({ message: 'Comment not found' });
+      return reply.code(404).send({ message: 'Comment not found' });
     }
 
     // Check if user is the comment author
     if (comment.userEmail !== userEmail) {
-      return res.status(403).json({ message: 'Not authorized to delete this comment' });
+      return reply.code(403).send({ message: 'Not authorized to delete this comment' });
     }
 
     await comment.destroy();
-    res.json({ message: 'Comment deleted successfully' });
+    return reply.send({ message: 'Comment deleted successfully' });
   } catch (error) {
     console.error('Error deleting comment:', error);
-    res.status(500).json({ message: 'Failed to delete comment' });
+    return reply.code(500).send({ message: 'Failed to delete comment' });
   }
 }; 

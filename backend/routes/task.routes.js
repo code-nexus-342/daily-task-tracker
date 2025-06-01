@@ -1,23 +1,35 @@
-import express from 'express';
 import { submitTask, getMyTasks, getAllTasks, updateTaskStatus, deleteTask } from '../controllers/task.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import upload from '../middleware/upload.middleware.js';
 
-const router = express.Router();
+export default async function (fastify, opts) {
+  // Submit a new task
+  fastify.post('/submit', {
+    onRequest: [authenticate],
+    handler: submitTask
+  });
 
-// Submit a new task
-router.post('/submit', authenticate, upload.array('files'), submitTask);
+  // Get tasks for a specific user
+  fastify.get('/my-tasks/:email', {
+    onRequest: [authenticate],
+    handler: getMyTasks
+  });
 
-// Get tasks for a specific user
-router.get('/my-tasks/:email', authenticate, getMyTasks);
+  // Get all completed tasks
+  fastify.get('/all', {
+    onRequest: [authenticate],
+    handler: getAllTasks
+  });
 
-// Get all completed tasks
-router.get('/all', authenticate, getAllTasks);
+  // Update task status
+  fastify.patch('/:taskId/status', {
+    onRequest: [authenticate],
+    handler: updateTaskStatus
+  });
 
-// Update task status
-router.patch('/:taskId/status', authenticate, updateTaskStatus);
-
-// Delete a task
-router.delete('/:taskId', authenticate, deleteTask);
-
-export default router;
+  // Delete a task
+  fastify.delete('/:taskId', {
+    onRequest: [authenticate],
+    handler: deleteTask
+  });
+}
