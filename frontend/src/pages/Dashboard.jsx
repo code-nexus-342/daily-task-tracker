@@ -340,128 +340,128 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
+            <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-8"
-        >
-          <div className="card">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
+            className="space-y-8"
+          >
+            <div className="card">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
               <h2 className="text-2xl font-bold">My Task Updates</h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden="true" />
-                  <input
-                    type="text"
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden="true" />
+                    <input
+                      type="text"
                     placeholder="Search by content, status, date..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 w-64"
-                    aria-label="Search tasks"
-                  />
-                </div>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500"
-                  aria-label="Filter by status"
-                >
-                  <option value="all">All Status</option>
-                  {Object.entries(STATUS_CONFIG).map(([value, { label }]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500"
-                  aria-label="Sort tasks"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="status">By Status</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
-              {isLoadingTasks ? (
-                Array(3).fill(null).map((_, index) => (
-                  <div key={index}>{renderTaskSkeleton()}</div>
-                ))
-              ) : (
-                filteredTasks.map((task) => (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => setSelectedTask(task)}
+                      aria-label="Search tasks"
+                    />
+                  </div>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500"
+                    aria-label="Filter by status"
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium">
-                          {task.userEmail || task.user?.email || 'Unknown User'}
-                        </h3>
-                        <p className="text-sm text-gray-500 flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
-                          {new Date(task.submittedAt).toLocaleDateString()}
-                        </p>
+                    <option value="all">All Status</option>
+                    {Object.entries(STATUS_CONFIG).map(([value, { label }]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500"
+                    aria-label="Sort tasks"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                  <option value="status">By Status</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+                {isLoadingTasks ? (
+                  Array(3).fill(null).map((_, index) => (
+                    <div key={index}>{renderTaskSkeleton()}</div>
+                  ))
+                ) : (
+                  filteredTasks.map((task) => (
+                    <motion.div
+                      key={task.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => setSelectedTask(task)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium">
+                            {task.userEmail || task.user?.email || 'Unknown User'}
+                          </h3>
+                          <p className="text-sm text-gray-500 flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
+                            {new Date(task.submittedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                        <select
+                          value={task.status}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleStatusChange(task.id, e.target.value);
+                          }}
+                          className={`px-2 py-1 rounded-full text-xs font-medium
+                                ${STATUS_CONFIG[task.status]?.color === 'green' ? 'bg-green-100 text-green-800' :
+                                  STATUS_CONFIG[task.status]?.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-blue-100 text-blue-800'}`}
+                            >
+                          {Object.entries(STATUS_CONFIG).map(([value, { label }]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                              <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTask(task.id);
+                          }}
+                          className="p-1 text-red-500 hover:text-red-700 transition-colors"
+                                aria-label="Delete task"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                      <select
-                        value={task.status}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handleStatusChange(task.id, e.target.value);
-                        }}
-                        className={`px-2 py-1 rounded-full text-xs font-medium
-                              ${STATUS_CONFIG[task.status]?.color === 'green' ? 'bg-green-100 text-green-800' :
-                                STATUS_CONFIG[task.status]?.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-blue-100 text-blue-800'}`}
-                          >
-                        {Object.entries(STATUS_CONFIG).map(([value, { label }]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
-                            <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteTask(task.id);
-                        }}
-                        className="p-1 text-red-500 hover:text-red-700 transition-colors"
-                              aria-label="Delete task"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                      <div className="mt-2">
+                      <p className="text-gray-700 whitespace-pre-wrap line-clamp-3">{task.research}</p>
+                        {task.challenges && (
+                        <div className="mt-2 text-sm text-gray-600 line-clamp-2">
+                            <strong>Challenges:</strong> {task.challenges}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="mt-2">
-                    <p className="text-gray-700 whitespace-pre-wrap line-clamp-3">{task.research}</p>
-                      {task.challenges && (
-                      <div className="mt-2 text-sm text-gray-600 line-clamp-2">
-                          <strong>Challenges:</strong> {task.challenges}
+                      {Array.isArray(task.files) && task.files.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Attachments:</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                          {task.files.map((file, index) => (
+                            <div key={index} onClick={(e) => e.stopPropagation()}>
+                              {renderFilePreview(file)}
+                            </div>
+                          ))}
+                        </div>
                         </div>
                       )}
-                    </div>
-                    {Array.isArray(task.files) && task.files.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Attachments:</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {task.files.map((file, index) => (
-                          <div key={index} onClick={(e) => e.stopPropagation()}>
-                            {renderFilePreview(file)}
-                          </div>
-                        ))}
-                      </div>
-                      </div>
-                    )}
-                  </motion.div>
-                ))
-              )}
+                    </motion.div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
       </div>
 
       {/* Task Detail Modal */}
