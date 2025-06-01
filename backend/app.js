@@ -24,7 +24,7 @@ const app = Fastify({
 await app.register(cors, {
   origin: process.env.NODE_ENV === 'production' 
     ? process.env.FRONTEND_URL 
-    : ['https://planmorph.onrender.com', 'https://planmorph.onrender.com', 'https://planmorph.onrender.com'],
+    : ['https://planmorph.onrender.com', 'http://localhost:5173', 'http://localhost:3000'],
   credentials: true
 });
 
