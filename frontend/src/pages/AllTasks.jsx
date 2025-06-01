@@ -177,20 +177,26 @@ const AllTasks = () => {
   }, [selectedTask]);
 
   const getFilePreviewUrl = (file) => {
+    // If it's a Cloudinary URL, return it as is
+    if (file.url.startsWith('http')) {
+      return file.url;
+    }
+    // For local files, construct the URL
     const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
-    return file.url.startsWith('http') 
-      ? file.url 
-      : `${baseUrl}${file.url.startsWith('/uploads/') ? file.url : `/uploads/${file.url}`}`;
+    return `${baseUrl}${file.url.startsWith('/uploads/') ? file.url : `/uploads/${file.url}`}`;
   };
 
   const handleFilePreview = (file) => {
     const fileType = file.type || file.mimeType;
-    const previewUrl = getFilePreviewUrl(file);
+    const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
+    const fileUrl = file.url.startsWith('http') 
+      ? file.url 
+      : `${baseUrl}${file.url.startsWith('/uploads/') ? file.url : `/uploads/${file.url}`}`;
 
     if (fileType?.startsWith('image/')) {
-      setPreviewFile({ type: 'image', url: previewUrl, name: file.name });
+      setPreviewFile({ type: 'image', url: fileUrl, name: file.name });
     } else if (fileType === 'application/pdf') {
-      setPreviewFile({ type: 'pdf', url: previewUrl, name: file.name });
+      setPreviewFile({ type: 'pdf', url: fileUrl, name: file.name });
     }
   };
 
@@ -580,13 +586,15 @@ const AllTasks = () => {
                   alt="Preview"
                   className="max-w-full h-auto"
                 />
-              ) : (
-                <iframe
-                  src={previewFile.url}
-                  className="w-full h-[70vh]"
-                  title="PDF Preview"
-                />
-              )}
+              ) : previewFile.type === 'pdf' ? (
+                <div className="w-full h-[80vh]">
+                  <iframe
+                    src={`${previewFile.url}#toolbar=0&navpanes=0&view=FitH`}
+                    className="w-full h-full border-0"
+                    title="PDF Preview"
+                  />
+                </div>
+              ) : null}
             </motion.div>
           </motion.div>
         )}

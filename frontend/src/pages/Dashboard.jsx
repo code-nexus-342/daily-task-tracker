@@ -163,20 +163,17 @@ const Dashboard = () => {
       : `${baseUrl}${file.url.startsWith('/uploads/') ? file.url : `/uploads/${file.url}`}`;
   };
 
-  const getFileDownloadUrl = (file) => {
-    const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
-    const filename = file.url.split('/').pop();
-    return `${baseUrl}/download/${filename}`;
-  };
-
   const handleFilePreview = (file) => {
     const fileType = file.type || file.mimeType;
-    const previewUrl = getFilePreviewUrl(file);
+    const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
+    const fileUrl = file.url.startsWith('http') 
+      ? file.url 
+      : `${baseUrl}${file.url.startsWith('/uploads/') ? file.url : `/uploads/${file.url}`}`;
 
     if (fileType?.startsWith('image/')) {
-      setPreviewFile({ type: 'image', url: previewUrl, name: file.name });
+      setPreviewFile({ type: 'image', url: fileUrl, name: file.name });
     } else if (fileType === 'application/pdf') {
-      setPreviewFile({ type: 'pdf', url: previewUrl, name: file.name });
+      setPreviewFile({ type: 'pdf', url: fileUrl, name: file.name });
     }
   };
 
@@ -256,19 +253,22 @@ const Dashboard = () => {
     }
 
     return (
-      <a
-        href={fileUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center px-3 py-2 bg-gray-100 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition-colors"
-      >
-        {fileType === 'application/pdf' ? (
-          <File className="h-4 w-4 mr-2 text-red-500" />
-        ) : (
-          <File className="h-4 w-4 mr-2 text-gray-500" />
-        )}
-        {file.name}
-      </a>
+      <div className="relative group">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFilePreview(file);
+          }}
+          className="inline-flex items-center px-3 py-2 bg-gray-100 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition-colors"
+        >
+          {fileType === 'application/pdf' ? (
+            <File className="h-4 w-4 mr-2 text-red-500" />
+          ) : (
+            <File className="h-4 w-4 mr-2 text-gray-500" />
+          )}
+          {file.name}
+        </button>
+      </div>
     );
   };
 
@@ -277,7 +277,7 @@ const Dashboard = () => {
       setIsLoadingComments(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/comments/task/${taskId}`,
+        `${import.meta.env.VITE_API_URL}/comments/${taskId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -298,7 +298,7 @@ const Dashboard = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/comments/task/${selectedTask.id}`,
+        `${import.meta.env.VITE_API_URL}/comments/${selectedTask.id}`,
         { content: newComment },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -622,43 +622,29 @@ const Dashboard = () => {
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">{previewFile.name}</h3>
-                <div className="flex items-center space-x-2">
-                  {previewFile.url && (
-                    <a
-                      href={getFileDownloadUrl(previewFile)}
-                      download={previewFile.name}
-                      className="text-blue-500 hover:text-blue-700"
-                      aria-label="Download file"
-                    >
-                      <Download className="h-5 w-5" />
-                    </a>
-                  )}
-                  <button
-                    onClick={() => setPreviewFile(null)}
-                    className="text-gray-500 hover:text-gray-700"
-                    aria-label="Close preview"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => setPreviewFile(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close preview"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
               {previewFile.type === 'image' ? (
                 <img
-                  src={previewFile.url.startsWith('http') 
-                    ? previewFile.url 
-                    : `${import.meta.env.VITE_API_URL.replace('/api', '')}${previewFile.url.startsWith('/uploads/') ? previewFile.url : `/uploads/${previewFile.url}`}`}
+                  src={previewFile.url}
                   alt="Preview"
                   className="max-w-full h-auto"
                 />
-              ) : (
-                <iframe
-                  src={previewFile.url.startsWith('http') 
-                    ? previewFile.url 
-                    : `${import.meta.env.VITE_API_URL.replace('/api', '')}${previewFile.url.startsWith('/uploads/') ? previewFile.url : `/uploads/${previewFile.url}`}`}
-                  className="w-full h-[70vh]"
-                  title="PDF Preview"
-                />
-              )}
+              ) : previewFile.type === 'pdf' ? (
+                <div className="w-full h-[80vh]">
+                  <iframe
+                    src={`${previewFile.url}#toolbar=0&navpanes=0&view=FitH`}
+                    className="w-full h-full border-0"
+                    title="PDF Preview"
+                  />
+                </div>
+              ) : null}
             </motion.div>
           </motion.div>
         )}

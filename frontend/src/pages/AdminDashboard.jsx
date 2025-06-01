@@ -16,7 +16,8 @@ import {
   UserPlus,
   UserMinus,
   CheckCircle,
-  XCircle
+  XCircle,
+  File
 } from 'lucide-react';
 import React from 'react';
 
@@ -31,6 +32,10 @@ const AdminDashboard = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
   const modalRef = React.useRef(null);
 
   // Fetch all data
@@ -158,6 +163,118 @@ const AdminDashboard = () => {
       );
     })
   };
+
+  // Handle file preview
+  const handleFilePreview = (file) => {
+    const fileType = file.type || file.mimeType;
+    const previewUrl = getFilePreviewUrl(file);
+
+    if (fileType?.startsWith('image/')) {
+      setPreviewFile({ type: 'image', url: previewUrl, name: file.name });
+    } else if (fileType === 'application/pdf') {
+      setPreviewFile({ type: 'pdf', url: previewUrl, name: file.name });
+    }
+  };
+
+  const getFilePreviewUrl = (file) => {
+    // If it's a Cloudinary URL, return it as is
+    if (file.url.startsWith('http')) {
+      return file.url;
+    }
+    // For local files, construct the URL
+    const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
+    return `${baseUrl}${file.url.startsWith('/uploads/') ? file.url : `/uploads/${file.url}`}`;
+  };
+
+  // Handle ESC key for modal
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && previewFile) {
+        setPreviewFile(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [previewFile]);
+
+  // Handle click outside modal
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (modalRef.current && !modalRef.current.contains(e.target)) {
+        setPreviewFile(null);
+      }
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Fetch comments for a task
+  const fetchComments = async (taskId) => {
+    try {
+      setIsLoadingComments(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/comments/task/${taskId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      setComments(response.data.comments || []);
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+      toast.error('Failed to fetch comments');
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  // Add comment to a task
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/comments/${selectedTask.id}`,
+        { content: newComment },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      setComments([response.data.comment, ...comments]);
+      setNewComment('');
+      toast.success('Comment added successfully');
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+      toast.error('Failed to add comment');
+    }
+  };
+
+  // Delete a comment
+  const handleDeleteComment = async (commentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(
+        `${import.meta.env.VITE_API_URL}/comments/${commentId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      setComments(comments.filter(comment => comment.id !== commentId));
+      toast.success('Comment deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+      toast.error('Failed to delete comment');
+    }
+  };
+
+  // Add effect to fetch comments when a task is selected
+  useEffect(() => {
+    if (selectedTask) {
+      fetchComments(selectedTask.id);
+    }
+  }, [selectedTask]);
 
   // Render user list
   const renderUsers = () => (
@@ -292,6 +409,57 @@ const AdminDashboard = () => {
     </div>
   );
 
+  // Render file preview
+  const renderFilePreview = (file) => {
+    const fileType = file.type || file.mimeType;
+    const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
+    const fileUrl = file.url.startsWith('http') 
+      ? file.url 
+      : `${baseUrl}${file.url.startsWith('/uploads/') ? file.url : `/uploads/${file.url}`}`;
+
+    if (fileType?.startsWith('image/')) {
+      return (
+        <div className="relative group">
+          <img
+            src={fileUrl}
+            alt={file.name}
+            className="h-24 w-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => handleFilePreview(file)}
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity rounded-lg flex items-center justify-center">
+            <button
+              onClick={() => handleFilePreview(file)}
+              className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-80 p-1 rounded-full shadow-lg transition-opacity"
+              aria-label="Preview image"
+            >
+              <Search className="h-4 w-4 text-gray-700" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative group">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleFilePreview(file);
+          }}
+          className="inline-flex items-center px-3 py-2 bg-gray-100 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition-colors"
+        >
+          {fileType === 'application/pdf' ? (
+            <File className="h-4 w-4 mr-2 text-red-500" />
+          ) : (
+            <File className="h-4 w-4 mr-2 text-gray-500" />
+          )}
+          {file.name}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -378,6 +546,192 @@ const AdminDashboard = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Task Detail Modal */}
+      <AnimatePresence>
+        {selectedTask && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Task details"
+            onClick={() => setSelectedTask(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold">Task Details</h2>
+                  <p className="text-sm text-gray-500 flex items-center mt-1">
+                    <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
+                    {new Date(selectedTask.submittedAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close details"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Research</h3>
+                  <p className="text-gray-700 whitespace-pre-wrap">{selectedTask.research}</p>
+                </div>
+
+                {selectedTask.challenges && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Challenges</h3>
+                    <p className="text-gray-700 whitespace-pre-wrap">{selectedTask.challenges}</p>
+                  </div>
+                )}
+
+                {Array.isArray(selectedTask.files) && selectedTask.files.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Attachments</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {selectedTask.files.map((file, index) => (
+                        <div key={index}>
+                          {renderFilePreview(file)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Comments Section */}
+                <div className="mt-8 border-t pt-6">
+                  <h3 className="text-lg font-medium mb-4">Comments</h3>
+                  
+                  {/* Add Comment Form */}
+                  <form onSubmit={handleAddComment} className="mb-6">
+                    <div className="flex gap-2">
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Add a comment..."
+                        className="flex-1 border rounded-lg p-2 focus:ring-2 focus:ring-primary-500"
+                        rows="2"
+                      />
+                      <button
+                        type="submit"
+                        className="btn btn-primary self-end"
+                        disabled={!newComment.trim()}
+                      >
+                        Post
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Comments List */}
+                  {isLoadingComments ? (
+                    <div className="space-y-4">
+                      {Array(3).fill(null).map((_, index) => (
+                        <div key={index} className="animate-pulse">
+                          <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                          <div className="h-16 bg-gray-200 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : comments.length > 0 ? (
+                    <div className="space-y-4">
+                      {comments.map((comment) => (
+                        <motion.div
+                          key={comment.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-gray-50 rounded-lg p-4"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <p className="font-medium text-sm">{comment.userEmail}</p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(comment.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                            {comment.userEmail === user.email && (
+                              <button
+                                onClick={() => handleDeleteComment(comment.id)}
+                                className="text-red-500 hover:text-red-700"
+                                aria-label="Delete comment"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">No comments yet</p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* File Preview Modal */}
+      <AnimatePresence>
+        {previewFile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            role="dialog"
+            aria-modal="true"
+            aria-label="File preview"
+          >
+            <motion.div
+              ref={modalRef}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-lg p-4 max-w-4xl w-full max-h-[90vh] overflow-auto"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">{previewFile.name}</h3>
+                <button
+                  onClick={() => setPreviewFile(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close preview"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              {previewFile.type === 'image' ? (
+                <img
+                  src={previewFile.url}
+                  alt="Preview"
+                  className="max-w-full h-auto"
+                />
+              ) : previewFile.type === 'pdf' ? (
+                <div className="w-full h-[80vh]">
+                  <iframe
+                    src={`${previewFile.url}#toolbar=0&navpanes=0&view=FitH`}
+                    className="w-full h-full border-0"
+                    title="PDF Preview"
+                  />
+                </div>
+              ) : null}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
