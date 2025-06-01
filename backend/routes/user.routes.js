@@ -1,4 +1,4 @@
-import { register, login, getProfile, getAllUsers, promoteUser, deleteUser } from '../controllers/user.controller.js';
+import { register, login, getProfile, getAllUsers, promoteUser, deleteUser, promoteToSupporter, demoteFromSupporter } from '../controllers/user.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { isAdmin } from '../middleware/admin.middleware.js';
 
@@ -36,6 +36,16 @@ export default async function (fastify, opts) {
   fastify.post('/:userId/promote', {
     onRequest: [authenticate, isAdmin],
     handler: promoteUser
+  });
+
+  fastify.post('/:userId/promote-supporter', {
+    onRequest: [authenticate, isAdmin],
+    handler: promoteToSupporter
+  });
+
+  fastify.post('/:userId/demote', {
+    onRequest: [authenticate, isAdmin],
+    handler: demoteFromSupporter
   });
 
   fastify.post('/:userId/delete', {

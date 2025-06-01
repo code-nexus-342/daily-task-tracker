@@ -200,3 +200,51 @@ export const deleteUser = async (request, reply) => {
     return reply.code(500).send({ message: 'Failed to delete user' });
   }
 };
+
+export const promoteToSupporter = async (request, reply) => {
+  try {
+    const user = await User.findByPk(request.params.userId);
+    
+    if (!user) {
+      return reply.code(404).send({ message: 'User not found' });
+    }
+    
+    if (user.role === 'supporter') {
+      return reply.code(400).send({ message: 'User is already a supporter' });
+    }
+    
+    if (user.role === 'admin') {
+      return reply.code(400).send({ message: 'Cannot change admin role' });
+    }
+    
+    user.role = 'supporter';
+    await user.save();
+    
+    return reply.send({ message: 'User promoted to supporter successfully' });
+  } catch (error) {
+    console.error('Promote to supporter error:', error);
+    return reply.code(500).send({ message: 'Failed to promote user to supporter' });
+  }
+};
+
+export const demoteFromSupporter = async (request, reply) => {
+  try {
+    const user = await User.findByPk(request.params.userId);
+    
+    if (!user) {
+      return reply.code(404).send({ message: 'User not found' });
+    }
+    
+    if (user.role !== 'supporter') {
+      return reply.code(400).send({ message: 'User is not a supporter' });
+    }
+    
+    user.role = 'user';
+    await user.save();
+    
+    return reply.send({ message: 'User demoted to regular user successfully' });
+  } catch (error) {
+    console.error('Demote from supporter error:', error);
+    return reply.code(500).send({ message: 'Failed to demote user' });
+  }
+};

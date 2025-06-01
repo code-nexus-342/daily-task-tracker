@@ -11,7 +11,8 @@ import {
   Users,
   LogOut,
   ChevronDown,
-  Shield
+  Shield,
+  BookOpen
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -31,14 +32,29 @@ const Navbar = () => {
   const navLinks = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/submit-task', label: 'Submit Task', icon: FileText },
-    { path: '/all-tasks', label: 'All Tasks', icon: Users }
+    { path: '/all-tasks', label: 'All Tasks', icon: Users },
+    { path: '/docs', label: 'Documentation', icon: BookOpen }
   ];
 
+  // Add admin/supporter specific links
+  if (user?.role === 'admin' || user?.role === 'supporter') {
+    navLinks.push(
+      { path: '/supporter-dashboard', label: 'Supporter', icon: Shield }
+    );
+  }
+
+  // Add admin dashboard link
+  if (user?.role === 'admin') {
+    navLinks.push(
+      { path: '/admin', label: 'Admin', icon: Shield }
+    );
+  }
+
   return (
-    <nav className="bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="bg-white shadow-sm fixed w-full z-50">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
         <div className="flex justify-between h-16">
-          <div className="flex">
+          <div className="flex items-center">
             <Link to="/" className="flex items-center">
               <Home className="h-6 w-6 text-primary-600" />
               <span className="ml-2 text-xl font-semibold text-gray-900">Daily Task</span>
@@ -46,12 +62,12 @@ const Navbar = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden sm:flex sm:items-center sm:space-x-4">
+          <div className="hidden md:flex md:items-center md:space-x-1 lg:space-x-2">
             {user && navLinks.map(({ path, label, icon: Icon }) => (
               <Link
                 key={path}
                 to={path}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                className={`flex items-center px-2 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap
                   ${isActive(path)
                     ? 'bg-primary-100 text-primary-700'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -65,13 +81,13 @@ const Navbar = () => {
 
           {/* User Menu */}
           {user && (
-            <div className="hidden sm:flex sm:items-center">
+            <div className="hidden md:flex md:items-center">
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none"
                 >
-                  <span className="text-sm font-medium">{user.email}</span>
+                  <span className="text-sm font-medium truncate max-w-[150px]">{user.email}</span>
                   <ChevronDown className="h-4 w-4" />
                 </button>
 
@@ -84,15 +100,6 @@ const Navbar = () => {
                       className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
                     >
                       <div className="py-1">
-                        {user.email === "lawravasco@gmail.com" && user.role === "admin" && (
-                          <Link
-                            to="/admin"
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            <Shield className="h-4 w-4 mr-2" />
-                            Admin Dashboard
-                          </Link>
-                        )}
                         <button
                           onClick={handleLogout}
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -109,7 +116,7 @@ const Navbar = () => {
           )}
 
           {/* Mobile menu button */}
-          <div className="flex items-center sm:hidden">
+          <div className="flex items-center md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
@@ -131,10 +138,10 @@ const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="sm:hidden"
+            className="md:hidden"
           >
             <div className="pt-2 pb-3 space-y-1">
-              {user && navLinks.map(({ path, label, icon: Icon }) => (
+              {navLinks.map(({ path, label, icon: Icon }) => (
                 <Link
                   key={path}
                   to={path}

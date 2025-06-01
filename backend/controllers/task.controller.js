@@ -1,5 +1,7 @@
 import Task from '../models/task.model.js';
 import { v2 as cloudinary } from 'cloudinary';
+import User from '../models/user.model.js';
+import Comment from '../models/comment.model.js';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -113,8 +115,12 @@ export const getAllTasks = async (request, reply) => {
       return reply.code(401).send({ message: 'Unauthorized: Missing user data' });
     }
 
+    // Check if user is admin
+    if (request.user.role !== 'admin') {
+      return reply.code(403).send({ message: 'Forbidden: Only admins can view all tasks' });
+    }
+
     const tasks = await Task.findAll({
-      where: { status: 'completed' }, // Only show completed tasks to all users
       order: [['submittedAt', 'DESC']]
     });
 
@@ -189,5 +195,116 @@ export const deleteTask = async (request, reply) => {
   } catch (err) {
     console.error('Task Deletion Error:', err);
     return reply.code(500).send({ message: 'Error deleting task', error: err.message });
+  }
+};
+
+export const approveTask = async (request, reply) => {
+  try {
+    const { taskId } = request.params;
+
+    if (!request.user || !request.user.email) {
+      return reply.code(401).send({ message: 'Unauthorized: Missing user data' });
+    }
+
+    // Check if user is admin
+    if (request.user.role !== 'admin') {
+      return reply.code(403).send({ message: 'Forbidden: Only admins can approve tasks' });
+    }
+
+    const task = await Task.findByPk(taskId);
+    if (!task) {
+      return reply.code(404).send({ message: 'Task not found' });
+    }
+
+    task.status = 'completed';
+    await task.save();
+
+    return reply.send({ message: 'Task approved successfully', task });
+  } catch (err) {
+    console.error('Task Approval Error:', err);
+    return reply.code(500).send({ message: 'Error approving task', error: err.message });
+  }
+};
+
+export const rejectTask = async (request, reply) => {
+  try {
+    const { taskId } = request.params;
+
+    if (!request.user || !request.user.email) {
+      return reply.code(401).send({ message: 'Unauthorized: Missing user data' });
+    }
+
+    // Check if user is admin
+    if (request.user.role !== 'admin') {
+      return reply.code(403).send({ message: 'Forbidden: Only admins can reject tasks' });
+    }
+
+    const task = await Task.findByPk(taskId);
+    if (!task) {
+      return reply.code(404).send({ message: 'Task not found' });
+    }
+
+    task.status = 'review';
+    await task.save();
+
+    return reply.send({ message: 'Task rejected successfully', task });
+  } catch (err) {
+    console.error('Task Rejection Error:', err);
+    return reply.code(500).send({ message: 'Error rejecting task', error: err.message });
+  }
+};
+
+export const getTaskStats = async (request, reply) => {
+  try {
+    const { role } = request.user;
+    if (!['admin', 'supporter'].includes(role)) {
+      return reply.code(403).send({ message: 'Unauthorized access' });
+    }
+
+    const [
+      totalTasks,
+      completedTasks,
+      pendingTasks,
+      reviewTasks,
+      activeUsers,
+      totalComments
+    ] = await Promise.all([
+      Task.count(),
+      Task.count({ where: { status: 'completed' } }),
+      Task.count({ where: { status: 'pending' } }),
+      Task.count({ where: { status: 'review' } }),
+      User.count({ where: { isActive: true } }),
+      Comment.count()
+    ]);
+
+    const recentTasks = await Task.findAll({
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: Comment,
+          attributes: ['id']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: 5
+    });
+
+    return reply.send({
+      stats: {
+        totalTasks,
+        completedTasks,
+        pendingTasks,
+        reviewTasks,
+        activeUsers,
+        totalComments
+      },
+      recentTasks
+    });
+  } catch (error) {
+    console.error('Error fetching task stats:', error);
+    return reply.code(500).send({ message: 'Failed to fetch task statistics' });
   }
 };

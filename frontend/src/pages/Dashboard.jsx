@@ -337,6 +337,36 @@ const Dashboard = () => {
     }
   }, [selectedTask]);
 
+  // Add notification for task status changes
+  useEffect(() => {
+    const checkTaskStatus = () => {
+      // Get the previous tasks from localStorage
+      const previousTasks = JSON.parse(localStorage.getItem('previousTasks') || '[]');
+      
+      // Find tasks that have changed status
+      const changedTasks = tasks.filter(task => {
+        const previousTask = previousTasks.find(pt => pt.id === task.id);
+        return previousTask && previousTask.status !== task.status;
+      });
+
+      // Show notifications only for changed tasks
+      changedTasks.forEach(task => {
+        if (task.status === 'completed') {
+          toast.success(`Your task has been approved! 🎉`);
+        } else if (task.status === 'review') {
+          toast.info(`Your task needs revision. Please review and resubmit.`);
+        }
+      });
+
+      // Update localStorage with current tasks
+      localStorage.setItem('previousTasks', JSON.stringify(tasks));
+    };
+
+    if (tasks.length > 0) {
+      checkTaskStatus();
+    }
+  }, [tasks]);
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -395,8 +425,11 @@ const Dashboard = () => {
                       key={task.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                    className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => setSelectedTask(task)}
+                      className={`bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer
+                        ${task.status === 'completed' ? 'border-green-200' : 
+                          task.status === 'review' ? 'border-yellow-200' : 
+                          'border-gray-200'}`}
+                      onClick={() => setSelectedTask(task)}
                     >
                       <div className="flex justify-between items-start">
                         <div>
@@ -409,31 +442,48 @@ const Dashboard = () => {
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
-                        <select
-                          value={task.status}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(task.id, e.target.value);
-                          }}
-                          className={`px-2 py-1 rounded-full text-xs font-medium
-                                ${STATUS_CONFIG[task.status]?.color === 'green' ? 'bg-green-100 text-green-800' :
-                                  STATUS_CONFIG[task.status]?.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-blue-100 text-blue-800'}`}
-                            >
-                          {Object.entries(STATUS_CONFIG).map(([value, { label }]) => (
-                            <option key={value} value={value}>{label}</option>
-                          ))}
-                        </select>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1
+                              ${task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                task.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-blue-100 text-blue-800'}`}
+                          >
+                            {STATUS_CONFIG[task.status]?.icon && (
+                              <span className="h-3 w-3">
+                                {React.createElement(STATUS_CONFIG[task.status].icon, {
+                                  className: "h-3 w-3",
+                                  "aria-hidden": "true"
+                                })}
+                              </span>
+                            )}
+                            <span>{STATUS_CONFIG[task.status]?.label || task.status}</span>
+                          </span>
+                          {task.status === 'review' && (
+                            <div className="flex items-center space-x-1">
                               <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteTask(task.id);
-                          }}
-                          className="p-1 text-red-500 hover:text-red-700 transition-colors"
-                                aria-label="Delete task"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(task.id, 'pending');
+                                }}
+                                className="p-1 text-blue-500 hover:text-blue-700 transition-colors"
+                                title="Mark as Pending"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Clock className="h-4 w-4" />
                               </button>
+                            </div>
+                          )}
+                          {task.status !== 'completed' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteTask(task.id);
+                              }}
+                              className="p-1 text-red-500 hover:text-red-700 transition-colors"
+                              aria-label="Delete task"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="mt-2">

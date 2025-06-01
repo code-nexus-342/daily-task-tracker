@@ -3,7 +3,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from './contexts/AuthContext';
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -17,6 +17,8 @@ import TaskSubmission from './pages/TaskSubmission';
 import AllTasks from './pages/AllTasks';
 import NotFound from './pages/NotFound';
 import AdminDashboard from './pages/AdminDashboard';
+import Docs from './pages/Docs';
+import SupporterDashboard from './pages/SupporterDashboard';
 
 // Components
 import PrivateRoute from './components/PrivateRoute';
@@ -35,6 +37,26 @@ const AdminRoute = ({ children }) => {
 
   if (!user || user.role !== 'admin') {
     return null;
+  }
+
+  return children;
+};
+
+// Protected routes
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+  const { user, isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -81,6 +103,15 @@ function App() {
                   <PrivateRoute>
                     <AllTasks />
                   </PrivateRoute>
+                }
+              />
+              <Route path="/docs" element={<Docs />} />
+              <Route
+                path="/supporter-dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'supporter']}>
+                    <SupporterDashboard />
+                  </ProtectedRoute>
                 }
               />
               <Route path="*" element={<NotFound />} />

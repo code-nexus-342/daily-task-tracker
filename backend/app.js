@@ -12,6 +12,7 @@ import { authenticate } from './middleware/auth.middleware.js';
 import commentRoutes from './routes/comment.routes.js';
 import fs from 'fs';
 import { createReadStream } from 'fs';
+import docsRoutes from './routes/docs.routes.js';
 
 // Load environment variables first
 dotenv.config();
@@ -81,6 +82,9 @@ try {
   
   await app.register(commentRoutes, { prefix: '/api/comments' });
   console.log('Comment routes registered at /api/comments');
+
+  await app.register(docsRoutes, { prefix: '/api/docs' });
+  console.log('Docs routes registered at /api/docs');
 
   // Add a test route to verify routing
   app.get('/api/test', async (request, reply) => {

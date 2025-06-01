@@ -17,9 +17,35 @@ import {
   UserMinus,
   CheckCircle,
   XCircle,
-  File
+  File,
+  Clock
 } from 'lucide-react';
 import React from 'react';
+
+// Constants
+const TASK_STATUS = {
+  PENDING: 'pending',
+  COMPLETED: 'completed',
+  REVIEW: 'review'
+};
+
+const STATUS_CONFIG = {
+  [TASK_STATUS.PENDING]: {
+    label: 'Pending',
+    icon: Clock,
+    color: 'blue'
+  },
+  [TASK_STATUS.COMPLETED]: {
+    label: 'Completed',
+    icon: CheckCircle,
+    color: 'green'
+  },
+  [TASK_STATUS.REVIEW]: {
+    label: 'Under Review',
+    icon: Search,
+    color: 'yellow'
+  }
+};
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -36,6 +62,7 @@ const AdminDashboard = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('all');
   const modalRef = React.useRef(null);
 
   // Fetch all data
@@ -99,15 +126,31 @@ const AdminDashboard = () => {
   const handleTaskAction = async (taskId, action) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/tasks/${taskId}/${action}`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      let endpoint;
+      let method = 'post';
+
+      switch (action) {
+        case 'approve':
+          endpoint = `${import.meta.env.VITE_API_URL}/tasks/${taskId}/approve`;
+          break;
+        case 'reject':
+          endpoint = `${import.meta.env.VITE_API_URL}/tasks/${taskId}/reject`;
+          break;
+        case 'delete':
+          endpoint = `${import.meta.env.VITE_API_URL}/tasks/${taskId}`;
+          method = 'delete';
+          break;
+        default:
+          throw new Error('Invalid action');
+      }
+
+      await axios({
+        method,
+        url: endpoint,
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
-      toast.success(`Task ${action} successfully`);
+      toast.success(`Task ${action}ed successfully`);
       fetchData();
     } catch (error) {
       console.error(`Failed to ${action} task:`, error);
@@ -147,12 +190,15 @@ const AdminDashboard = () => {
     }),
     tasks: tasks.filter(task => {
       const searchLower = searchTerm.toLowerCase();
-      return (
+      const matchesSearch = (
         (task.research?.toLowerCase() || '').includes(searchLower) ||
         (task.userEmail?.toLowerCase() || '').includes(searchLower) ||
         (task.status?.toLowerCase() || '').includes(searchLower) ||
         (new Date(task.submittedAt).toLocaleDateString().toLowerCase() || '').includes(searchLower)
       );
+      
+      const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
+      return matchesSearch && matchesStatus;
     }),
     files: files.filter(file => {
       const searchLower = searchTerm.toLowerCase();
@@ -292,15 +338,51 @@ const AdminDashboard = () => {
               <p className="text-sm text-gray-500">{user.role}</p>
             </div>
             <div className="flex items-center space-x-2">
-              {user.role !== 'admin' && (
+              {user.role === 'user' && (
                 <>
                   <button
-                    key="promote"
+                    key="promote-admin"
                     onClick={() => handleUserAction(user.id, 'promote')}
                     className="p-2 text-blue-500 hover:text-blue-700"
                     title="Promote to Admin"
                   >
                     <Shield className="h-5 w-5" />
+                  </button>
+                  <button
+                    key="promote-supporter"
+                    onClick={() => handleUserAction(user.id, 'promote-supporter')}
+                    className="p-2 text-green-500 hover:text-green-700"
+                    title="Promote to Supporter"
+                  >
+                    <UserPlus className="h-5 w-5" />
+                  </button>
+                  <button
+                    key="delete"
+                    onClick={() => handleUserAction(user.id, 'delete')}
+                    className="p-2 text-red-500 hover:text-red-700"
+                    title="Delete User"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </>
+              )}
+              {user.role === 'supporter' && (
+                <>
+                  <button
+                    key="promote-admin"
+                    onClick={() => handleUserAction(user.id, 'promote')}
+                    className="p-2 text-blue-500 hover:text-blue-700"
+                    title="Promote to Admin"
+                  >
+                    <Shield className="h-5 w-5" />
+                  </button>
+                  <button
+                    key="demote"
+                    onClick={() => handleUserAction(user.id, 'demote')}
+                    className="p-2 text-yellow-500 hover:text-yellow-700"
+                    title="Demote to User"
+                  >
+                    <UserMinus className="h-5 w-5" />
                   </button>
                   <button
                     key="delete"
@@ -327,7 +409,10 @@ const AdminDashboard = () => {
           key={task.id}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-4 rounded-lg shadow-sm border"
+          className={`bg-white p-4 rounded-lg shadow-sm border
+            ${task.status === 'completed' ? 'border-green-200' : 
+              task.status === 'review' ? 'border-yellow-200' : 
+              'border-gray-200'}`}
         >
           <div className="flex justify-between items-start">
             <div>
@@ -335,24 +420,44 @@ const AdminDashboard = () => {
               <p className="text-sm text-gray-500">
                 {new Date(task.submittedAt).toLocaleDateString()}
               </p>
+              <span
+                className={`mt-1 inline-block px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1
+                  ${task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    task.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-blue-100 text-blue-800'}`}
+              >
+                {STATUS_CONFIG[task.status]?.icon && (
+                  <span className="h-3 w-3">
+                    {React.createElement(STATUS_CONFIG[task.status].icon, {
+                      className: "h-3 w-3",
+                      "aria-hidden": "true"
+                    })}
+                  </span>
+                )}
+                <span>{STATUS_CONFIG[task.status]?.label || task.status}</span>
+              </span>
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                key="approve"
-                onClick={() => handleTaskAction(task.id, 'approve')}
-                className="p-2 text-green-500 hover:text-green-700"
-                title="Approve Task"
-              >
-                <CheckCircle className="h-5 w-5" />
-              </button>
-              <button
-                key="reject"
-                onClick={() => handleTaskAction(task.id, 'reject')}
-                className="p-2 text-red-500 hover:text-red-700"
-                title="Reject Task"
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
+              {task.status !== 'completed' && (
+                <>
+                  <button
+                    key="approve"
+                    onClick={() => handleTaskAction(task.id, 'approve')}
+                    className="p-2 text-green-500 hover:text-green-700"
+                    title="Approve Task"
+                  >
+                    <CheckCircle className="h-5 w-5" />
+                  </button>
+                  <button
+                    key="reject"
+                    onClick={() => handleTaskAction(task.id, 'reject')}
+                    className="p-2 text-red-500 hover:text-red-700"
+                    title="Reject Task"
+                  >
+                    <XCircle className="h-5 w-5" />
+                  </button>
+                </>
+              )}
               <button
                 key="delete"
                 onClick={() => handleTaskAction(task.id, 'delete')}
@@ -482,6 +587,18 @@ const AdminDashboard = () => {
                     className="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
+                {activeTab === 'tasks' && (
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="all">All Status</option>
+                    {Object.entries(STATUS_CONFIG).map(([value, { label }]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
@@ -571,7 +688,7 @@ const AdminDashboard = () => {
                 <div>
                   <h2 className="text-2xl font-bold">Task Details</h2>
                   <p className="text-sm text-gray-500 flex items-center mt-1">
-                    <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
+                    <Clock className="h-4 w-4 mr-1" aria-hidden="true" />
                     {new Date(selectedTask.submittedAt).toLocaleDateString()}
                   </p>
                 </div>
