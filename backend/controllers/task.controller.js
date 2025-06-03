@@ -281,7 +281,7 @@ export const getTaskStats = async (request, reply) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'name', 'email']
+          attributes: ['id', 'email']
         },
         {
           model: Comment,

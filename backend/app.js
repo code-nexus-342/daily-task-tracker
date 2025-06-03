@@ -13,6 +13,7 @@ import commentRoutes from './routes/comment.routes.js';
 import fs from 'fs';
 import { createReadStream } from 'fs';
 import docsRoutes from './routes/docs.routes.js';
+import './models/associations.js';
 
 // Load environment variables first
 dotenv.config();
@@ -172,7 +173,7 @@ process.on('unhandledRejection', (err) => {
 // Sync database
 try {
   console.log('Attempting to sync database...');
-  await sequelize.sync();
+  await sequelize.sync({ alter: true });
   console.log('Database synced successfully');
 } catch (err) {
   console.error('Database sync error:', {
