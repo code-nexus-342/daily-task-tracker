@@ -115,12 +115,22 @@ export const getAllTasks = async (request, reply) => {
       return reply.code(401).send({ message: 'Unauthorized: Missing user data' });
     }
 
-    // Check if user is admin
-    if (request.user.role !== 'admin') {
-      return reply.code(403).send({ message: 'Forbidden: Only admins can view all tasks' });
+    // Check if user is admin or supporter
+    if (!['admin', 'supporter'].includes(request.user.role)) {
+      return reply.code(403).send({ message: 'Forbidden: Only admins and supporters can view all tasks' });
     }
 
     const tasks = await Task.findAll({
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'email']
+        },
+        {
+          model: Comment,
+          attributes: ['id']
+        }
+      ],
       order: [['submittedAt', 'DESC']]
     });
 
