@@ -37,7 +37,13 @@ const SupporterDashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await axios.get('/api/tasks/stats');
+        const token = localStorage.getItem('token');
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/tasks/stats`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
         if (response.data && response.data.stats) {
           setStats(response.data.stats);
           setRecentTasks(response.data.recentTasks || []);
@@ -133,7 +139,7 @@ const SupporterDashboard = () => {
                     <div>
                       <h3 className="font-medium">{task.research}</h3>
                       <p className="text-sm text-gray-500">
-                        Submitted by: {task.User?.name || 'Unknown'}
+                        Submitted by: {task.userEmail || 'Unknown'}
                       </p>
                     </div>
                     <StatusBadge status={task.status} />

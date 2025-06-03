@@ -116,7 +116,7 @@ const AllTasks = () => {
       setIsLoadingComments(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/comments/task/${taskId}`,
+        `${import.meta.env.VITE_API_URL}/comments/${taskId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -137,7 +137,7 @@ const AllTasks = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/comments/task/${selectedTask.id}`,
+        `${import.meta.env.VITE_API_URL}/comments/${selectedTask.id}`,
         { content: newComment },
         {
           headers: { Authorization: `Bearer ${token}` }
