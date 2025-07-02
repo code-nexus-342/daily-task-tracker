@@ -1,25 +1,22 @@
 {
   "development": {
-    "username": "postgres",
-    "password": "Lawrence",
+    "username": "your_db_username",
+    "password": "your_db_password",
     "database": "daily_task_db",
     "host": "127.0.0.1",
     "dialect": "postgres",
     "dialectModule": "pg"
   },
   "test": {
-    "username": "postgres",
-    "password": "Lawrence",
-    "database": "daily_task_db",
+    "username": "your_db_username",
+    "password": "your_db_password", 
+    "database": "daily_task_db_test",
     "host": "127.0.0.1",
     "dialect": "postgres",
     "dialectModule": "pg"
   },
   "production": {
-    "username": "daily_task_db_owner",
-    "password": "npg_bLhVKXT20mrg",
-    "database": "daily_task_db",
-    "host": "ep-muddy-dawn-a8swx3na-pooler.eastus2.azure.neon.tech",
+    "use_env_variable": "DATABASE_URL",
     "dialect": "postgres",
     "dialectOptions": {
       "ssl": {

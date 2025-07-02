@@ -42,7 +42,12 @@ A full-stack application for managing daily task submissions with role-based acc
    npm install
    ```
 
-3. Create a `.env` file with the following variables:
+3. Copy the example environment file and configure it:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Then edit the `.env` file with your actual values:
    ```
    PORT=5000
    NODE_ENV=development
@@ -50,21 +55,16 @@ A full-stack application for managing daily task submissions with role-based acc
    FRONTEND_URL=http://localhost:5173
 
    # Database
+   DATABASE_URL=postgresql://username:password@localhost:5432/daily_task_db
    DB_NAME=daily_task_db
    DB_USER=your_db_user
    DB_PASSWORD=your_db_password
    DB_HOST=localhost
-   DB_PORT=5432
 
-   # Google OAuth
-   GOOGLE_CLIENT_ID=your_google_client_id
-   GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-   # Email
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=587
-   SMTP_USER=your_email@gmail.com
-   SMTP_PASS=your_app_specific_password
+   # Cloudinary (for file uploads)
+   CLOUDINARY_CLOUD_NAME=your_cloud_name
+   CLOUDINARY_API_KEY=your_api_key
+   CLOUDINARY_API_SECRET=your_api_secret
    ```
 
 4. Run database migrations:
